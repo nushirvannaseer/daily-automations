@@ -2,11 +2,11 @@ package jobs
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"daily_jobs/notifier"
 )
 
@@ -30,34 +30,33 @@ func CheckEasySMXStock(toAddress string) {
 		return
 	}
 
-	// 2. Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	// 2. Read the raw HTML response
+	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		log.Printf("Error parsing HTML: %v", err)
+		log.Printf("Error reading HTML body: %v", err)
 		return
 	}
+	htmlContent := strings.ToLower(string(bodyBytes))
 
-	// 3. Look for "Sold Out" on the page
-	// We'll search the text content of the entire document (or specific buttons if known).
-	// A simple check is just searching the text of the body.
-	bodyText := doc.Find("body").Text()
-	
-	// Many Shopify sites use uppercase, capitalize, etc. So we check case-insensitively.
-	isSoldOut := strings.Contains(strings.ToLower(bodyText), "sold out")
+	// 3. Look for "sold out" or the standard Shopify/Schema.org "outofstock"
+	// This is much more reliable since Shopify often renders the visual "Sold Out" text using JavaScript,
+	// but the raw HTML always contains the metadata for availability.
+	isSoldOut := strings.Contains(htmlContent, "sold out") || strings.Contains(htmlContent, "outofstock")
 
 	if isSoldOut {
 		log.Println("EasySMX X05 Pro is still Sold Out.")
 	} else {
 		log.Println("EasySMX X05 Pro MIGHT BE IN STOCK! Sending email...")
+	}
 		
 		subject := "EasySMX X05 Pro In Stock Alert!"
 		body := fmt.Sprintf("The 'Sold Out' text was not found on the page.\n\nCheck the link: %s", EasySMXURL)
 
-		err := notifier.SendEmail(subject, body, toAddress)
-		if err != nil {
-			log.Printf("Failed to send email alert: %v", err)
+		emailErr := notifier.SendEmail(subject, body, toAddress)
+		if emailErr != nil {
+			log.Printf("Failed to send email alert: %v", emailErr)
 		} else {
 			log.Println("Alert email sent successfully.")
 		}
-	}
+	
 }
