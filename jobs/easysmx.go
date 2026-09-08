@@ -47,16 +47,16 @@ func CheckEasySMXStock(toAddress string) {
 		log.Println("EasySMX X05 Pro is still Sold Out.")
 	} else {
 		log.Println("EasySMX X05 Pro MIGHT BE IN STOCK! Sending email...")
-	}
+	
 		
 		subject := "EasySMX X05 Pro In Stock Alert!"
 		body := fmt.Sprintf("The 'Sold Out' text was not found on the page.\n\nCheck the link: %s", EasySMXURL)
 
-		emailErr := notifier.SendEmail(subject, body, toAddress)
-		if emailErr != nil {
-			log.Printf("Failed to send email alert: %v", emailErr)
+		err := notifier.SendEmail(subject, body, toAddress)
+		if err != nil {
+			log.Printf("Failed to send email alert: %v", err)
 		} else {
 			log.Println("Alert email sent successfully.")
 		}
-	
+	}
 }
